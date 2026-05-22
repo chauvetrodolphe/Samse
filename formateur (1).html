@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Émargement — Formateur</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --border: #D8D4CB;
+  --border2: #E8E4DC;
+  --ink: #1A1916;
+  --ink2: #5A5750;
+  --ink3: #9A9790;
+  --accent: #1B4F8A;
+  --accent-light: #E8F0FA;
+  --green: #1E6B3A;
+  --green-light: #E6F4EC;
+  --amber: #7A4A0A;
+  --amber-light: #FDF3E3;
+  --red: #8A1B1B;
+  --red-light: #FAE8E8;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 2rem 1rem 6rem;
+}
+
+.page { max-width: 780px; margin: 0 auto; }
+
+/* Header */
+.header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 2rem; gap: 1rem;
+}
+.header-left h1 {
+  font-size: 1.5rem; font-weight: 600; letter-spacing: -0.03em;
+  color: var(--ink); margin-bottom: 0.25rem;
+}
+.header-left p { font-size: 0.8rem; color: var(--ink3); font-family: var(--mono); }
+.header-badge {
+  font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
+  background: var(--accent); color: #fff;
+  padding: 0.35rem 0.75rem; border-radius: 4px; white-space: nowrap;
+}
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 0; border-bottom: 2px solid var(--border2);
+  margin-bottom: 1.5rem;
+}
+.tab {
+  font-family: var(--sans); font-size: 0.85rem; font-weight: 500;
+  padding: 0.65rem 1.25rem; cursor: pointer;
+  border: none; background: none; color: var(--ink3);
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color 0.15s;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:hover:not(.active) { color: var(--ink2); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Card */
+.card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+}
+.card-label {
+  font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink3); margin-bottom: 1rem;
+}
+
+/* Grid */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.g1 { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+/* Fields */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 0.75rem; color: var(--ink2); font-weight: 500; }
+.field input, .field select, .field textarea {
+  font-family: var(--sans); font-size: 0.875rem; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 0.5rem 0.75rem;
+  outline: none; width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent); background: #fff;
+}
+.field input[readonly] { color: var(--ink2); cursor: default; }
+
+/* Participants */
+.part-row {
+  display: grid; grid-template-columns: 1fr 1fr 28px;
+  gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.del-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--ink3); font-size: 1.1rem; padding: 2px;
+  border-radius: 4px; transition: color 0.15s, background 0.15s;
+}
+.del-btn:hover { color: var(--red); background: var(--red-light); }
+.add-btn {
+  font-family: var(--sans); font-size: 0.8rem; color: var(--accent);
+  background: none; border: 1px dashed var(--accent);
+  border-radius: var(--r); padding: 0.6rem 1rem;
+  cursor: pointer; width: 100%; text-align: center;
+  transition: background 0.15s;
+}
+.add-btn:hover { background: var(--accent-light); }
+
+/* Boutons */
+.btn {
+  font-family: var(--sans); font-size: 0.875rem; font-weight: 500;
+  padding: 0.6rem 1.25rem; border-radius: var(--r);
+  cursor: pointer; border: 1px solid var(--border);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { opacity: 0.88; }
+.btn-success { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-success:hover { opacity: 0.88; }
+.btn-ghost { background: transparent; color: var(--ink2); }
+.btn-ghost:hover { background: var(--bg); }
+
+.btn-row { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; flex-wrap: wrap; }
+
+/* Lien généré */
+.link-box {
+  background: var(--accent-light); border: 1px solid #B8D0EE;
+  border-radius: var(--r); padding: 1.25rem; margin-top: 1rem;
+  display: none;
+}
+.link-box.visible { display: block; }
+.link-box-title {
+  font-family: var(--mono); font-size: 0.7rem; font-weight: 500;
+  color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+.link-row { display: flex; gap: 8px; align-items: center; }
+.link-input {
+  font-family: var(--mono); font-size: 0.7rem;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--r); padding: 0.5rem 0.75rem; flex: 1;
+  color: var(--ink2); outline: none;
+}
+.copy-btn {
+  font-family: var(--sans); font-size: 0.8rem; font-weight: 500;
+  padding: 0.5rem 1rem; border-radius: var(--r);
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  white-space: nowrap; transition: background 0.2s;
+}
+.copy-btn.done { background: var(--green); }
+.steps { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 5px; }
+.step {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 0.8rem; color: var(--ink2); line-height: 1.5;
+}
+.step-n {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 0.65rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ===== ONGLET COLLECTE ===== */
+.collect-hint {
+  font-size: 0.8rem; color: var(--ink2); line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.sig-slot {
+  border: 1px solid var(--border2); border-radius: var(--r);
+  margin-bottom: 0.5rem; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.sig-slot.ok { border-color: #86C99B; }
+.sig-slot.err { border-color: #E08080; }
+
+.sig-slot-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0.6rem 1rem; background: var(--bg);
+}
+.slot-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--border2); color: var(--ink3);
+  font-size: 0.7rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+.sig-slot.ok .slot-num { background: var(--green-light); color: var(--green); }
+.sig-slot.err .slot-num { background: var(--red-light); color: var(--red); }
+
+.slot-input {
+  font-family: var(--mono); font-size: 0.7rem; flex: 1;
+  background: transparent; border: none; outline: none; color: var(--ink2);
+  padding: 0;
+}
+.slot-input::placeholder { color: var(--ink3); }
+
+.sig-slot-preview {
+  padding: 0.75rem 1rem; border-top: 1px solid var(--border2);
+  display: none; background: #fff;
+}
+.sig-slot.ok .sig-slot-preview { display: block; }
+
+.preview-row {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.preview-name { font-size: 0.875rem; font-weight: 600; min-width: 140px; }
+.preview-ent { font-size: 0.75rem; color: var(--ink3); }
+.preview-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+  font-family: var(--mono); font-size: 0.65rem; padding: 2px 8px;
+  border-radius: 4px; font-weight: 500;
+}
+.tag-ok { background: var(--green-light); color: var(--green); }
+.tag-no { background: var(--red-light); color: var(--red); }
+.preview-sig { height: 36px; object-fit: contain; border: 1px solid var(--border2); border-radius: 4px; background: #fff; }
+.preview-horo { font-family: var(--mono); font-size: 0.6rem; color: var(--ink3); }
+
+/* Synthèse */
+.synth-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 1.25rem 1.5rem;
+  margin-top: 1rem; display: none;
+}
+.synth-card.visible { display: block; }
+.synth-counters { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.counter-chip {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 0.6rem 1.1rem;
+}
+.counter-n { font-family: var(--mono); font-size: 1.5rem; font-weight: 500; color: var(--ink); }
+.counter-n.green { color: var(--green); }
+.counter-n.amber { color: var(--amber); }
+.counter-l { font-size: 0.7rem; color: var(--ink3); }
+
+.synth-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+.synth-table th {
+  text-align: left; font-size: 0.65rem; font-weight: 500;
+  color: var(--ink3); padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--border2); background: var(--bg);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.synth-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border2); vertical-align: middle; }
+.synth-table tr:last-child td { border-bottom: none; }
+.synth-table tr:hover td { background: #FAFAF7; }
+.t-sig { height: 30px; width: 90px; object-fit: contain; border: 1px solid var(--border2); border-radius: 3px; background: #fff; display: block; }
+.t-ok { color: var(--green); font-weight: 600; }
+.t-no { color: var(--ink3); }
+
+@media (max-width: 600px) {
+  .g2, .g3 { grid-template-columns: 1fr; }
+  .part-row { grid-template-columns: 1fr 28px; }
+  .header { flex-direction: column; gap: 0.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Émargement distanciel</h1>
+      <p>Formation Teams · Signatures électroniques</p>
+    </div>
+    <div class="header-badge" id="ts">—</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('prepare')">① Préparer la session</button>
+    <button class="tab" onclick="showTab('collect')">② Collecter les signatures</button>
+  </div>
+
+  <!-- ===== ONGLET 1 : PRÉPARER ===== -->
+  <div id="tab-prepare" class="tab-content active">
+
+    <div class="card">
+      <p class="card-label">Formation</p>
+      <div class="g1">
+        <div class="field">
+          <label>Intitulé *</label>
+          <input type="text" id="intitule" placeholder="ex. : Gestion de la supply chain">
+        </div>
+      </div>
+      <div class="g2">
+        <div class="field">
+          <label>Organisme</label>
+          <input type="text" id="organisme" placeholder="ex. : MBWay">
+        </div>
+        <div class="field">
+          <label>Formateur *</label>
+          <input type="text" id="formateur" placeholder="Nom Prénom">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-label">Session</p>
+      <div class="g3" style="margin-bottom:0;">
+        <div class="field">
+          <label>Date *</label>
+          <input type="date" id="date">
+        </div>
+        <div class="field">
+          <label>Heure début</label>
+          <input type="time" id="hdebut">
+        </div>
+        <div class="field">
+          <label>Heure fin</label>
+          <input type="time" id="hfin">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-label">Participants <span style="font-weight:400;font-size:0.8rem;color:var(--ink3)">(optionnel — pré-remplit les noms)</span></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;margin-bottom:6px;">
+        <span style="font-size:0.7rem;color:var(--ink3);font-family:var(--mono);">NOM PRÉNOM</span>
+        <span style="font-size:0.7rem;color:var(--ink3);font-family:var(--mono);">ENTREPRISE</span>
+        <span></span>
+      </div>
+      <div id="participants-list"></div>
+      <button class="add-btn" onclick="addPart()">+ Ajouter un participant</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="reset()">Réinitialiser</button>
+      <button class="btn btn-primary" onclick="genLink()">Générer le lien participants →</button>
+    </div>
+
+    <!-- Lien généré -->
+    <div class="link-box" id="link-box">
+      <div class="link-box-title">✓ Lien prêt — à coller dans Teams</div>
+      <div class="link-row">
+        <input type="text" class="link-input" id="generated-link" readonly>
+        <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copier</button>
+      </div>
+      <div class="steps">
+        <div class="step"><div class="step-n">1</div>Copie ce lien ci-dessus</div>
+        <div class="step"><div class="step-n">2</div>Colle-le dans le chat Teams de ta réunion</div>
+        <div class="step"><div class="step-n">3</div>Chaque participant clique, signe sur son téléphone</div>
+        <div class="step"><div class="step-n">4</div>Il te renvoie un lien dans Teams — colle-le dans l'onglet ② Collecter</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ONGLET 2 : COLLECTER ===== -->
+  <div id="tab-collect" class="tab-content">
+
+    <div class="card">
+      <p class="card-label">Liens de signature reçus <span id="nb-filled" style="font-weight:400;color:var(--ink2);">(0 renseigné)</span></p>
+      <p class="collect-hint">
+        Chaque participant t'a renvoyé un lien dans Teams après avoir signé.<br>
+        Colle ces liens ici un par un — les signatures apparaissent automatiquement.
+      </p>
+      <div id="slots-container"></div>
+      <button class="add-btn" onclick="addSlot()" style="margin-top:0.5rem;">+ Ajouter une case</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="clearAll()">Tout effacer</button>
+      <button class="btn btn-success" onclick="exportPDF()">📄 Exporter PDF de synthèse</button>
+    </div>
+
+    <!-- Synthèse -->
+    <div class="synth-card" id="synth-card">
+      <p class="card-label">Synthèse</p>
+      <div class="synth-counters" id="synth-counters"></div>
+      <div style="overflow-x:auto;">
+        <table class="synth-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nom Prénom</th>
+              <th>Entreprise</th>
+              <th>Matin</th>
+              <th>A-M</th>
+              <th>Horodatage</th>
+              <th>Signature</th>
+            </tr>
+          </thead>
+          <tbody id="synth-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ===== UTILS =====
+function now() {
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`
+       + ` ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+document.getElementById('ts').textContent = now();
+setInterval(() => { document.getElementById('ts').textContent = now(); }, 30000);
+
+// ===== TABS =====
+function showTab(t) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  document.querySelectorAll('.tab')[t === 'prepare' ? 0 : 1].classList.add('active');
+}
+
+// ===== ONGLET 1 — PRÉPARER =====
+let partCount = 0;
+
+function addPart(nom, ent) {
+  partCount++;
+  const id = partCount;
+  const div = document.createElement('div');
+  div.className = 'part-row';
+  div.id = 'prow-' + id;
+  div.innerHTML = `
+    <input type="text" class="p-nom" id="nom-${id}" placeholder="Nom Prénom" value="${nom||''}">
+    <input type="text" class="p-ent" id="ent-${id}" placeholder="Entreprise" value="${ent||''}">
+    <button class="del-btn" onclick="document.getElementById('prow-${id}').remove()">×</button>
+  `;
+  // Wrap inputs for .field styling
+  div.querySelectorAll('input').forEach(inp => {
+    inp.style.cssText = 'font-family:var(--sans);font-size:0.875rem;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:0.5rem 0.75rem;outline:none;width:100%;';
+    inp.addEventListener('focus', () => inp.style.borderColor = 'var(--accent)');
+    inp.addEventListener('blur', () => inp.style.borderColor = 'var(--border)');
+  });
+  document.getElementById('participants-list').appendChild(div);
+}
+
+function reset() {
+  ['intitule','organisme','formateur','hdebut','hfin'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('participants-list').innerHTML = '';
+  partCount = 0;
+  document.getElementById('link-box').classList.remove('visible');
+  for (let i = 0; i < 3; i++) addPart();
+}
+
+function genLink() {
+  const intitule = document.getElementById('intitule').value.trim();
+  const formateur = document.getElementById('formateur').value.trim();
+  const date = document.getElementById('date').value;
+  if (!intitule || !formateur || !date) {
+    alert('Merci de renseigner au minimum : Intitulé, Formateur et Date.');
+    return;
+  }
+
+  const participants = [];
+  document.querySelectorAll('.part-row').forEach(row => {
+    const nom = row.querySelector('.p-nom').value.trim();
+    const ent = row.querySelector('.p-ent').value.trim();
+    if (nom) participants.push({ nom, ent });
+  });
+
+  const data = {
+    intitule,
+    organisme: document.getElementById('organisme').value.trim(),
+    formateur,
+    date,
+    hdebut: document.getElementById('hdebut').value,
+    hfin: document.getElementById('hfin').value,
+    participants
+  };
+
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+
+  // URL de la page signer.html — même dossier que formateur.html
+  const base = window.location.href.replace(/\/[^\/]*$/, '/');
+  const link = base + 'signer.html?s=' + encoded;
+
+  document.getElementById('generated-link').value = link;
+  document.getElementById('link-box').classList.add('visible');
+  document.getElementById('link-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyLink() {
+  const val = document.getElementById('generated-link').value;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copié !';
+    btn.classList.add('done');
+    setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('done'); }, 2500);
+  });
+}
+
+// Init onglet 1
+document.getElementById('date').value = new Date().toISOString().split('T')[0];
+for (let i = 0; i < 3; i++) addPart();
+
+// ===== ONGLET 2 — COLLECTER =====
+let slotCount = 0;
+
+function addSlot() {
+  slotCount++;
+  const id = slotCount;
+  const div = document.createElement('div');
+  div.className = 'sig-slot';
+  div.id = 'slot-' + id;
+  div.innerHTML = `
+    <div class="sig-slot-header">
+      <div class="slot-num" id="snum-${id}">${id}</div>
+      <input class="slot-input" id="sinput-${id}" type="text"
+        placeholder="Colle ici le lien reçu dans Teams (https://…?ret=…)"
+        oninput="parseSlot(${id})">
+    </div>
+    <div class="sig-slot-preview" id="spreview-${id}"></div>
+  `;
+  document.getElementById('slots-container').appendChild(div);
+}
+
+function parseSlot(id) {
+  const val = document.getElementById('sinput-' + id).value.trim();
+  const slot = document.getElementById('slot-' + id);
+  const preview = document.getElementById('spreview-' + id);
+  updateFilled();
+
+  if (!val) { slot.className = 'sig-slot'; preview.innerHTML = ''; return; }
+
+  try {
+    let raw = '';
+    if (val.includes('?ret=')) raw = val.split('?ret=')[1].split('&')[0];
+    else if (val.includes('&ret=')) raw = val.split('&ret=')[1].split('&')[0];
+    else throw new Error('pas de ?ret=');
+
+    const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+
+    slot.className = 'sig-slot ok';
+    const mOk = data.matin ? 'ok' : 'no';
+    const aOk = data.am ? 'ok' : 'no';
+    preview.innerHTML = `
+      <div class="preview-row">
+        <div>
+          <div class="preview-name">${data.nom || '—'}</div>
+          <div class="preview-ent">${data.ent || ''}</div>
+        </div>
+        <div class="preview-tags">
+          <span class="tag tag-${mOk}">Matin : ${data.matin ? '✓' : '✗'}</span>
+          <span class="tag tag-${aOk}">A-M : ${data.am ? '✓' : '✗'}</span>
+        </div>
+        ${data.sig ? `<img class="preview-sig" src="${data.sig}" alt="sig">` : ''}
+        <div class="preview-horo">${data.ts || ''}</div>
+      </div>
+    `;
+    updateSynth();
+  } catch(e) {
+    slot.className = 'sig-slot err';
+    preview.innerHTML = '';
+  }
+}
+
+function updateFilled() {
+  let n = 0;
+  for (let i = 1; i <= slotCount; i++) {
+    const inp = document.getElementById('sinput-' + i);
+    if (inp && inp.value.trim()) n++;
+  }
+  document.getElementById('nb-filled').textContent = `(${n} renseigné${n>1?'s':''})`;
+}
+
+function getSignatures() {
+  const sigs = [];
+  for (let i = 1; i <= slotCount; i++) {
+    const inp = document.getElementById('sinput-' + i);
+    if (!inp || !inp.value.trim()) continue;
+    try {
+      const val = inp.value.trim();
+      let raw = '';
+      if (val.includes('?ret=')) raw = val.split('?ret=')[1].split('&')[0];
+      else if (val.includes('&ret=')) raw = val.split('&ret=')[1].split('&')[0];
+      else continue;
+      const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      sigs.push({ ...data, _ok: true });
+    } catch(e) { /* skip */ }
+  }
+  return sigs;
+}
+
+function updateSynth() {
+  const sigs = getSignatures();
+  if (sigs.length === 0) { document.getElementById('synth-card').classList.remove('visible'); return; }
+
+  document.getElementById('synth-card').classList.add('visible');
+  document.getElementById('synth-counters').innerHTML = `
+    <div class="counter-chip"><div class="counter-n">${sigs.length}</div><div class="counter-l">collectées</div></div>
+    <div class="counter-chip"><div class="counter-n green">${sigs.filter(s=>s.matin).length}</div><div class="counter-l">présents matin</div></div>
+    <div class="counter-chip"><div class="counter-n green">${sigs.filter(s=>s.am).length}</div><div class="counter-l">présents A-M</div></div>
+  `;
+
+  const tbody = document.getElementById('synth-body');
+  tbody.innerHTML = '';
+  sigs.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--ink3);font-family:var(--mono);font-size:0.7rem;">${i+1}</td>
+      <td><strong>${s.nom||'—'}</strong></td>
+      <td style="color:var(--ink3);font-size:0.75rem;">${s.ent||'—'}</td>
+      <td class="${s.matin?'t-ok':'t-no'}" style="text-align:center;">${s.matin?'✓':'✗'}</td>
+      <td class="${s.am?'t-ok':'t-no'}" style="text-align:center;">${s.am?'✓':'✗'}</td>
+      <td style="font-family:var(--mono);font-size:0.65rem;color:var(--ink3);">${s.ts||'—'}</td>
+      <td>${s.sig?`<img class="t-sig" src="${s.sig}" alt="sig">`:'—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function clearAll() {
+  if (!confirm('Effacer tous les liens collectés ?')) return;
+  document.getElementById('slots-container').innerHTML = '';
+  document.getElementById('synth-card').classList.remove('visible');
+  slotCount = 0;
+  updateFilled();
+  for (let i = 0; i < 5; i++) addSlot();
+}
+
+// ===== EXPORT PDF =====
+function exportPDF() {
+  const sigs = getSignatures();
+  if (sigs.length === 0) { alert('Aucune signature valide à exporter.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = M;
+
+  const first = sigs[0];
+  const intitule = (first.session && first.session.intitule) || '—';
+  const formateur = (first.session && first.session.formateur) || '';
+  const date = (first.session && first.session.date) || '';
+
+  // En-tête
+  doc.setFillColor(27, 79, 138); doc.rect(0, 0, W, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15); doc.setFont('helvetica', 'bold');
+  doc.text('FICHE D\'ÉMARGEMENT', M, 12);
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+  doc.text(intitule, M, 19);
+  const meta = [formateur && 'Formateur : ' + formateur, date && 'Date : ' + date].filter(Boolean).join('   ·   ');
+  doc.text(meta, M, 25);
+  doc.setFontSize(7.5); doc.text('Généré le ' + now(), W - M, 25, { align: 'right' });
+  y = 36;
+
+  // Compteurs
+  doc.setFillColor(232, 240, 250); doc.rect(M, y, W - M * 2, 9, 'F');
+  doc.setTextColor(27, 79, 138); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+  doc.text(`${sigs.length} signature(s) collectée(s)   ·   ${sigs.filter(s => s.matin).length} présents matin   ·   ${sigs.filter(s => s.am).length} présents après-midi`, M + 4, y + 6);
+  y += 15;
+
+  // En-têtes colonnes
+  const cols = [M, M + 6, M + 48, M + 86, M + 101, M + 116, M + 128, M + 173];
+  doc.setFillColor(245, 244, 239); doc.rect(M, y - 4, W - M * 2, 8, 'F');
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(27, 79, 138);
+  ['#', 'Nom Prénom', 'Entreprise', 'Matin', 'A-M', 'Horodatage', 'Signature', 'Statut'].forEach((h, i) => {
+    doc.text(h, cols[i] + 1, y);
+  });
+  y += 4;
+  doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.3); doc.line(M, y, W - M, y);
+  y += 4;
+
+  const rowH = 18;
+  sigs.forEach((s, ri) => {
+    if (y + rowH > 278) { doc.addPage(); y = M; }
+    if (ri % 2 === 0) { doc.setFillColor(250, 250, 248); doc.rect(M, y - 2, W - M * 2, rowH, 'F'); }
+
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
+    doc.text(String(ri + 1), cols[0] + 1, y + 4);
+    doc.setFont('helvetica', 'bold');
+    doc.text((s.nom || '—').substring(0, 22), cols[1] + 1, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.text((s.ent || '—').substring(0, 18), cols[2] + 1, y + 4);
+    doc.setTextColor(s.matin ? 0x1E : 0xAA, s.matin ? 0x6B : 0x30, s.matin ? 0x3A : 0x30);
+    doc.text(s.matin ? 'Oui' : 'Non', cols[3] + 1, y + 4);
+    doc.setTextColor(s.am ? 0x1E : 0xAA, s.am ? 0x6B : 0x30, s.am ? 0x3A : 0x30);
+    doc.text(s.am ? 'Oui' : 'Non', cols[4] + 1, y + 4);
+    doc.setTextColor(100, 100, 100); doc.setFontSize(6.5);
+    const horoLines = doc.splitTextToSize(s.ts || '—', 38);
+    doc.text(horoLines, cols[5] + 1, y + 3);
+    if (s.sig) {
+      try { doc.addImage(s.sig, 'JPEG', cols[6] + 1, y, 40, 13); } catch (e) {}
+    }
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(0x1E, 0x6B, 0x3A);
+    doc.text('Signe', cols[7] + 1, y + 4);
+    y += rowH;
+  });
+
+  // Pied
+  const pages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7); doc.setTextColor(180, 180, 180);
+    doc.text('Émargement distanciel · ' + now(), W / 2, 293, { align: 'center' });
+    doc.text(p + '/' + pages, W - M, 293, { align: 'right' });
+  }
+
+  const fname = 'emargement_' + (date || now().split(' ')[0]).replace(/\//g, '-') + '.pdf';
+  doc.save(fname);
+}
+
+// Init slots collecte
+for (let i = 0; i < 5; i++) addSlot();
+</script>
+</body>
+</html>
