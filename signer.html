@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Signer ma présence</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --border: #D8D4CB;
+  --border2: #E8E4DC;
+  --ink: #1A1916;
+  --ink2: #5A5750;
+  --ink3: #9A9790;
+  --accent: #1B4F8A;
+  --accent-light: #E8F0FA;
+  --green: #1E6B3A;
+  --green-light: #E6F4EC;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --r: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 1.25rem 1rem 4rem;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Header */
+.top {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 1.5rem;
+}
+.top-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.top h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; }
+.top p { font-size: 0.75rem; color: var(--ink3); font-family: var(--mono); }
+
+/* Session info */
+.session-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 1rem 1.25rem; margin-bottom: 1rem;
+}
+.session-title {
+  font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;
+}
+.session-meta {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--ink3);
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+}
+.meta-chip {
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 2px 8px;
+}
+
+/* Field */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 0.875rem; }
+.field label { font-size: 0.75rem; font-weight: 500; color: var(--ink2); }
+.field input {
+  font-family: var(--sans); font-size: 0.9rem; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 0.6rem 0.875rem;
+  outline: none; width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+.field input:focus { border-color: var(--accent); background: #fff; }
+.field input[readonly] { color: var(--ink2); }
+
+/* Créneaux */
+.creneaux {
+  display: flex; gap: 0.75rem; margin-bottom: 0.875rem; flex-wrap: wrap;
+}
+.creneau {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: var(--r); padding: 0.6rem 1rem; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none; flex: 1;
+}
+.creneau.checked { border-color: var(--accent); background: var(--accent-light); }
+.creneau input[type=checkbox] {
+  width: 18px; height: 18px; accent-color: var(--accent);
+  cursor: pointer; flex-shrink: 0;
+}
+.creneau span { font-size: 0.875rem; font-weight: 500; }
+
+/* Canvas */
+.sig-wrap { margin-bottom: 0.875rem; }
+.sig-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.5rem;
+}
+.sig-header span { font-size: 0.75rem; font-weight: 500; color: var(--ink2); }
+.clear-sig {
+  font-size: 0.75rem; color: var(--ink3); background: none; border: none;
+  cursor: pointer; padding: 3px 8px; border-radius: 4px;
+  font-family: var(--sans);
+}
+.clear-sig:hover { background: var(--border2); color: var(--ink2); }
+
+.canvas-wrap {
+  border: 2px dashed var(--border); border-radius: var(--r);
+  background: #fff; overflow: hidden; position: relative;
+  transition: border-color 0.2s;
+}
+.canvas-wrap.has-sig { border-style: solid; border-color: var(--accent); }
+.canvas-hint {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 0.8rem; color: var(--ink3); pointer-events: none; text-align: center;
+  transition: opacity 0.2s;
+}
+.canvas-hint.hidden { opacity: 0; }
+
+canvas {
+  display: block; width: 100%; height: 120px;
+  touch-action: none; cursor: crosshair;
+}
+
+/* CTA */
+.cta {
+  width: 100%; padding: 0.875rem; border-radius: var(--r);
+  font-family: var(--sans); font-size: 1rem; font-weight: 600;
+  cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s;
+  margin-top: 0.25rem;
+}
+.cta:active { transform: scale(0.98); }
+.cta-sign { background: var(--accent); color: #fff; }
+.cta-sign:hover { opacity: 0.9; }
+.cta-sign:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Résultat */
+.result {
+  display: none; margin-top: 1rem;
+  background: var(--green-light); border: 1.5px solid #86C99B;
+  border-radius: var(--r); padding: 1.25rem;
+}
+.result.visible { display: block; }
+.result-title {
+  font-size: 1rem; font-weight: 600; color: var(--green);
+  margin-bottom: 0.5rem;
+}
+.result-body {
+  font-size: 0.8rem; color: var(--ink2); line-height: 1.7; margin-bottom: 0.875rem;
+}
+.result-link-wrap { position: relative; margin-bottom: 0.75rem; }
+.result-link {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--ink2);
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--r); padding: 0.625rem 0.875rem;
+  width: 100%; outline: none; word-break: break-all;
+  display: block;
+}
+.copy-cta {
+  width: 100%; padding: 0.75rem; border-radius: var(--r);
+  font-family: var(--sans); font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; border: none;
+  background: var(--green); color: #fff;
+  transition: opacity 0.15s;
+}
+.copy-cta.done { background: #145428; }
+.copy-cta:hover { opacity: 0.9; }
+
+.instruction {
+  font-size: 0.78rem; color: var(--green); line-height: 1.6;
+  margin-top: 0.5rem; padding-top: 0.5rem;
+  border-top: 1px solid #B6E0C0;
+}
+
+/* Error / no session */
+.no-session {
+  text-align: center; padding: 3rem 1rem;
+}
+.no-session p { font-size: 0.9rem; color: var(--ink2); }
+
+/* Card wrapper */
+.card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 1.25rem; margin-bottom: 1rem;
+}
+.card-label {
+  font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink3); margin-bottom: 1rem;
+}
+</style>
+</head>
+<body>
+
+<div id="app-main" style="display:none;">
+
+  <div class="top">
+    <div>
+      <div class="top-dot"></div>
+    </div>
+    <div>
+      <h1>Émargement en ligne</h1>
+      <p>Formation distancielle</p>
+    </div>
+  </div>
+
+  <!-- Infos session -->
+  <div class="session-card" id="session-card">
+    <div class="session-title" id="s-intitule">—</div>
+    <div class="session-meta" id="s-meta"></div>
+  </div>
+
+  <!-- Formulaire -->
+  <div class="card">
+    <p class="card-label">Vos informations</p>
+
+    <div class="field">
+      <label>Nom Prénom *</label>
+      <input type="text" id="nom" placeholder="Votre nom complet" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Entreprise</label>
+      <input type="text" id="ent" placeholder="Votre entreprise">
+    </div>
+
+    <label style="font-size:0.75rem;font-weight:500;color:var(--ink2);display:block;margin-bottom:0.5rem;">Présence</label>
+    <div class="creneaux">
+      <label class="creneau" id="lbl-matin" for="cb-matin">
+        <input type="checkbox" id="cb-matin" onchange="toggleCreneau('matin')">
+        <span>Matin</span>
+      </label>
+      <label class="creneau" id="lbl-am" for="cb-am">
+        <input type="checkbox" id="cb-am" onchange="toggleCreneau('am')">
+        <span>Après-midi</span>
+      </label>
+    </div>
+
+    <div class="sig-wrap">
+      <div class="sig-header">
+        <span>Signature *</span>
+        <button class="clear-sig" onclick="clearSig()">Effacer</button>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <div class="canvas-hint" id="canvas-hint">Signez ici avec votre doigt ou souris</div>
+        <canvas id="sig-canvas" width="600" height="180"></canvas>
+      </div>
+    </div>
+
+    <button class="cta cta-sign" id="btn-sign" onclick="sign()">
+      Valider et générer mon lien →
+    </button>
+  </div>
+
+  <!-- Résultat -->
+  <div class="result" id="result">
+    <div class="result-title">✓ Signature enregistrée !</div>
+    <div class="result-body">
+      Votre lien de signature est prêt.<br>
+      <strong>Copiez-le et collez-le dans le chat Teams</strong> pour le transmettre au formateur.
+    </div>
+    <div class="result-link-wrap">
+      <input type="text" class="result-link" id="result-link" readonly>
+    </div>
+    <button class="copy-cta" id="copy-cta" onclick="copyResult()">
+      📋 Copier le lien et l'envoyer dans Teams
+    </button>
+    <div class="instruction">
+      → Ouvre Teams, va dans le chat de la réunion, colle ce lien et envoie.
+    </div>
+  </div>
+
+</div>
+
+<div id="app-error" class="no-session" style="display:none;">
+  <p style="font-size:2rem;margin-bottom:1rem;">⚠️</p>
+  <p>Lien invalide ou expiré.<br>Demande un nouveau lien à ton formateur.</p>
+</div>
+
+<script>
+let sessionData = null;
+let hasSig = false;
+
+// ===== INIT =====
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('s');
+  if (!raw) {
+    // Démo sans paramètre — mode test
+    sessionData = {
+      intitule: 'Mode démonstration',
+      formateur: 'Formateur Test',
+      organisme: '',
+      date: new Date().toISOString().split('T')[0],
+      hdebut: '09:00', hfin: '17:00',
+      participants: []
+    };
+    document.getElementById('s-intitule').textContent = sessionData.intitule;
+    document.getElementById('s-meta').innerHTML = buildMeta(sessionData);
+    document.getElementById('app-main').style.display = 'block';
+    initCanvas();
+    return;
+  }
+
+  try {
+    sessionData = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    document.getElementById('s-intitule').textContent = sessionData.intitule || '—';
+    document.getElementById('s-meta').innerHTML = buildMeta(sessionData);
+
+    // Pré-remplir si participant trouvé
+    if (sessionData.participants && sessionData.participants.length > 0) {
+      const urlNom = params.get('n');
+      if (urlNom) {
+        const p = sessionData.participants.find(p => p.nom === decodeURIComponent(urlNom));
+        if (p) {
+          document.getElementById('nom').value = p.nom;
+          document.getElementById('ent').value = p.ent || '';
+          document.getElementById('nom').setAttribute('readonly', true);
+        }
+      }
+    }
+
+    document.getElementById('app-main').style.display = 'block';
+    initCanvas();
+  } catch(e) {
+    document.getElementById('app-error').style.display = 'block';
+  }
+})();
+
+function buildMeta(d) {
+  const parts = [];
+  if (d.formateur) parts.push(d.formateur);
+  if (d.date) parts.push(formatDate(d.date));
+  if (d.hdebut && d.hfin) parts.push(d.hdebut + ' – ' + d.hfin);
+  else if (d.hdebut) parts.push('à partir de ' + d.hdebut);
+  return parts.map(p => `<span class="meta-chip">${p}</span>`).join('');
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+// ===== CRÉNEAUX =====
+function toggleCreneau(id) {
+  const cb = document.getElementById('cb-' + id);
+  document.getElementById('lbl-' + id).classList.toggle('checked', cb.checked);
+}
+
+// ===== CANVAS =====
+function initCanvas() {
+  const canvas = document.getElementById('sig-canvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false, lx = 0, ly = 0;
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width, sy = canvas.height / r.height;
+    if (e.touches) return [(e.touches[0].clientX - r.left) * sx, (e.touches[0].clientY - r.top) * sy];
+    return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy];
+  }
+
+  ctx.strokeStyle = '#1A1916'; ctx.lineWidth = 2.8;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  function start(e) {
+    e.preventDefault();
+    drawing = true;
+    [lx, ly] = pos(e);
+    hasSig = true;
+    document.getElementById('canvas-wrap').classList.add('has-sig');
+    document.getElementById('canvas-hint').classList.add('hidden');
+  }
+  function move(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const [x, y] = pos(e);
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(x, y); ctx.stroke();
+    [lx, ly] = [x, y];
+  }
+  function stop() { drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', stop);
+  canvas.addEventListener('mouseleave', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', stop);
+}
+
+function clearSig() {
+  const canvas = document.getElementById('sig-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  hasSig = false;
+  document.getElementById('canvas-wrap').classList.remove('has-sig');
+  document.getElementById('canvas-hint').classList.remove('hidden');
+}
+
+function isCanvasEmpty() {
+  const canvas = document.getElementById('sig-canvas');
+  const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return false;
+  return true;
+}
+
+// ===== SIGNER =====
+function getNow() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function sign() {
+  const nom = document.getElementById('nom').value.trim();
+  if (!nom) { alert('Merci de saisir votre nom.'); document.getElementById('nom').focus(); return; }
+  if (isCanvasEmpty()) { alert('Merci de dessiner votre signature.'); return; }
+
+  const canvas = document.getElementById('sig-canvas');
+  // Exporter avec fond blanc, qualité réduite pour URL courte
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  const ctx = tmp.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, tmp.width, tmp.height);
+  ctx.drawImage(canvas, 0, 0);
+  const sigData = tmp.toDataURL('image/jpeg', 0.45);
+
+  const payload = {
+    nom,
+    ent: document.getElementById('ent').value.trim(),
+    matin: document.getElementById('cb-matin').checked,
+    am: document.getElementById('cb-am').checked,
+    ts: getNow(),
+    sig: sigData,
+    session: sessionData ? {
+      intitule: sessionData.intitule,
+      formateur: sessionData.formateur,
+      date: sessionData.date
+    } : {}
+  };
+
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+
+  // Construire le lien de retour vers formateur.html
+  // (même dossier, avec ?ret= en paramètre pour que le collecteur puisse le parser)
+  const base = window.location.href.split('?')[0].replace('signer.html', 'formateur.html');
+  const retLink = base + '?ret=' + encoded;
+
+  document.getElementById('result-link').value = retLink;
+  document.getElementById('result').classList.add('visible');
+  document.getElementById('btn-sign').disabled = true;
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyResult() {
+  const val = document.getElementById('result-link').value;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('copy-cta');
+    btn.textContent = '✓ Lien copié ! Collez-le maintenant dans Teams.';
+    btn.classList.add('done');
+  }).catch(() => {
+    // Fallback sélection manuelle
+    document.getElementById('result-link').select();
+    document.execCommand('copy');
+    const btn = document.getElementById('copy-cta');
+    btn.textContent = '✓ Lien copié !';
+    btn.classList.add('done');
+  });
+}
+</script>
+</body>
+</html>
